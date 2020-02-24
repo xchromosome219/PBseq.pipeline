@@ -106,12 +106,6 @@ paste ${sample} $analysis_dir/${sample}/mapped_reads_num $analysis_dir/${sample}
 cd ..
 fi
 
-#### step6 ####
-#### get the ${sample}_site_readsNum_gene.txt
-if [  ! -f  $analysis_dir/${sample}/${sample}_site_readsNum_gene.txt ]; then
-$command_path/site_readsNum_gene.pl $analysis_dir/${sample}/${sample}_readsPsite $analysis_dir/${sample}/${sample}_site_readsNum_gene.txt
-fi
-
 ################################################################
 ################### End : Run PBseq pipeline #################
 ################################################################
