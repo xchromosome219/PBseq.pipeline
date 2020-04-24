@@ -2,7 +2,7 @@
 
 **PBIseq** is a set of tools designed for analyzing Genome-wide piggyBac transposon-based mutagenesis and quantitative insertion site analysis in haploid Candida species. 
 
-# Install
+# Install and Requirements
 **PBIseq** is developed in *Perl 5* v22, with dependent libraries as below:
 
 ## Requirements
@@ -28,33 +28,28 @@
 -	PBISeq scripts (https://github.com/xchromosome219/PBseq.pipeline).
 
 
-## Requirements
-We recommend using *conda* package manager (https://conda.io/miniconda.html) to install required bioinformatics tools and packages in *Bioconda* (https://bioconda.github.io/). And install `bwa`, `samtools`, `bedtools`, `FASTX Toolkit`, `scipy`, `pandas`, `pysam`, `h5py`:
-```
-conda install -c bioconda bwa samtools cutadapt numpy scipy pandas pysam h5py
-```
+## Installation
+We recommend using *conda* package manager (https://conda.io/miniconda.html) to install required bioinformatics tools and packages in *Bioconda* (https://bioconda.github.io/). 
 
-
-# Install
-**GridTools** is developed in *Python* 3.6.4 and compatible with *Python* 3.6+, with dependent libraries as below:
-
-## Requirements
-We recommend using *conda* package manager (https://conda.io/miniconda.html) to install required bioinformatics tools and packages in *Bioconda* (https://bioconda.github.io/). And install `bwa`, `samtools`, `cutadapt`, `numpy`, `scipy`, `pandas`, `pysam`, `h5py`:
+create Ca_PBISeq analysis work enviroment
 ```
-conda install -c bioconda bwa samtools cutadapt numpy scipy pandas pysam h5py
+conda create –n PBISeq python=3 
+conda info –envs
 ```
 
-
-## Installing
-**GridTools** is ready to use without any further setups in install. 
+And install `bwa`, `samtools`, `bedtools`, `FASTX Toolkit`, `perl-config-general`:
 ```
-cp gridtools/GridTools.py ~/bin
-chmod +x ~/bin/GridTools.py 
+conda install -c bioconda bwa samtools bedtools fastx_toolkit perl-config-general
 ```
 
 # Usage
+
+## create reference genome index
+We established the haploid C. albicans reference genome by de novo assembly of PacBio and Illumina sequencing data, which is available in Our Nature Protocols Paper - Supplementary Data 1 (A892_Genome.zip). Users can prepare the genome index file in .fasta format using BWA by running the follow command:
 ```
-GridTools.py [-h] [--version] {matefq,evaluate RNA,DNA,matrix,model,stats} ...
+conda activate PBISeq
+bwa index A892.assembly.fasta > A892.assembly.fasta
+conda deactivate
 ```
 
 There are 7 sub-commands designed for specific functions.
