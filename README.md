@@ -1,1 +1,1 @@
-# PBseq.pipeline
+# PBIseq.pipeline
