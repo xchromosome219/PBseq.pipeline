@@ -72,7 +72,8 @@ perl step1.remove.adaptor.pl \
 ```
 
 ## Step 2 identify the PB transposon sequence in Read 1
-Filter all Read 1 for the presence of the transposon-genomic junction and prepare reads for mapping by trimming the transposon sequence (TTTCTAGGG) in Read 1 to leave only the insertion motif and the genomic sequence. Then, a text file < specific_reads_ratio.txt > will be generated, which contains various statistics for the sequencing data, including the percentage of reads being mapped (that have the transposon), the percentage of reads kept in the initial ARG4 site, the percentage of reads due to non-specific PCR amplification, the number of raw reads and the total number of reads being mapped. Run the following command:
+Filter all Read 1 for the presence of the transposon-genomic junction and prepare reads for mapping by trimming the transposon sequence (TTTCTAGGG) in Read 1 to leave only the insertion motif and the genomic sequence. Then, a text file < specific_reads_ratio.txt > will be generated, which contains various statistics for the sequencing data, including the percentage of reads being mapped (that have the transposon), the percentage of reads kept in the initial ARG4 site, the percentage of reads due to non-specific PCR amplification, the number of raw reads and the total number of reads being mapped. Run the following command: 
+Demo data (cleaned data) with the name < PBISeq.demo.R1_filter_cut.fastq > can also be downloaded from here： https://github.com/xchromosome219/PBseq.pipeline/tree/master/Ca_PBSeq_results/example
 ```
 perl step2.PB.site.pl ./Ca_PBISeq_results/PBISeq.demo.R1_clean.fastq \
 ./Ca_PBISeq_results/PBISeq.demo.R1_filter_cut.fastq
