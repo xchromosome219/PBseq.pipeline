@@ -44,7 +44,7 @@ conda install -c bioconda bwa samtools bedtools fastx_toolkit perl-config-genera
 
 # Usage
 
-## create reference genome index
+## Create reference genome index
 We established the haploid C. albicans reference genome by de novo assembly of PacBio and Illumina sequencing data, which is available in Our Nature Protocols Paper - Supplementary Data 1 (A892_Genome.zip). Users can prepare the genome index file in .fasta format using BWA by running the follow command:
 ```
 conda activate PBISeq
@@ -52,117 +52,80 @@ bwa index A892.assembly.fasta > A892.assembly.fasta
 conda deactivate
 ```
 
-There are 7 sub-commands designed for specific functions.
-
-sub-command|function
----|---
-**matefq**|parse *BAM* file that mapped to GRID-seq linker to RNA-DNA mate in interleaved *FASTQ* file.
-**evaluate**|evaluate the RNA-DNA mates quality and quanitity from the *BAM* file mapped to the genome.
-**RNA**|identify chromatin-enriched RNAs.
-**DNA**|identify RNA-enriched chromatin regions in background (trans) and foreground (cis).
-**matrix**|cacluate the RNA-chromatin interation matrix.
-**model**|model the network of enhancer-promoter proximity.
-**stats**|statistics of GRID-seq data.
-
-## matefq
+## Create a new home directory < Ca_PBISeq_results >, and copy demo sequence raw data to Ca_PBISeq result directory
+Demo data with the name < PBISeq.demo.R1.fq.gz > and < PBISeq.demo.R2.fq.gz > can be downloaded from https://www.ncbi.nlm.nih.gov/bioproject/PRJNA564479
 ```
-GridTools.py matefq [-h] -o HDF5 [-l MINLEN] [-n READNAME] bam
+mkdir –p ./Ca_PBISeq_results
+# copy demo sequence raw data to Ca_PBISeq result directory
+zcat PBISeq.demo.R1.fq.gz > ./Ca_PBISeq_results/PBISeq.demo.R1.fastq
+zcat PBISeq.demo.R2.fq.gz > ./Ca_PBISeq_results/PBISeq.demo.R2.fastq
 ```
-parse *BAM* file that mapped to GRID-seq linker to RNA-DNA mate in interleaved *FASTQ* file.
 
-arguments|option|description
----|---|---
-`bam`|required|*BAM* file mapped to the GRID-seq Linker.
-`-o/--hdf5 HDF5`|required|output mapping information to *HDF5*.
-`-l/--minlen MINLEN`|optional|filter RNA-DNA mates with both RNA and DNA length >= MINLEN [default: 19].
-`-n/--readname READNAME`|optional|rename the prefix of each read [default: no change].
-
-## evaluate
+## Step 1 remove Illumina adaptor
+Trim Illumina adaptor sequences in FASTQ files, using our in-house Perl script (step1.remove.adaptor.pl) by running the following command:
 ```
-GridTools.py matefq [-h] -o HDF5 [-k BINK] [-m WINM] -g GTF bam
+cat ./Ca_PBISeq_results/PBISeq.demo.R1.fastq  |\
+perl step1.remove.adaptor.pl \
+-p ./Ca_PBISeq_results/PBISeq.demo.R1 \
+-q ./Ca_PBISeq_results/PBISeq.demo \
+-t 15
 ```
-evaluate the RNA-DNA mates quality and quanitity from the *BAM* file mapped to the genome.
 
-arguments|option|description
----|---|---
-`bam`|required|*BAM* file mapped to the GRID-seq Linker.
-`-o/--hdf5 HDF5`|required|output mapping information to *HDF5*.
-`-g/--gtf GTF`|required|gene annotation in *GTF* format.
-`-k/--bink BINK`|optional|bin size (kb) of the genome [default: 10 kb].
-`-m/--winm WINM`|optional|moving window for smoothing in bins [default: 10].
-
-## RNA
+## Step 2 identify the PB transposon sequence in Read 1
+Filter all Read 1 for the presence of the transposon-genomic junction and prepare reads for mapping by trimming the transposon sequence (TTTCTAGGG) in Read 1 to leave only the insertion motif and the genomic sequence. Then, a text file < specific_reads_ratio.txt > will be generated, which contains various statistics for the sequencing data, including the percentage of reads being mapped (that have the transposon), the percentage of reads kept in the initial ARG4 site, the percentage of reads due to non-specific PCR amplification, the number of raw reads and the total number of reads being mapped. Run the following command:
 ```
-GridTools.py RNA [-h] [-e EXPRS] [-s SCOPE] hdf5
+perl step2.PB.site.pl ./Ca_PBISeq_results/PBISeq.demo.R1_clean.fastq \
+./Ca_PBISeq_results/PBISeq.demo.R1_filter_cut.fastq
+
+conda activate PBISeq
+fastx_reverse_complement -Q 33 \
+–I ./Ca_PBISeq_results/PBISeq.demo.R1_filter_cut.fastq \
+-o ./Ca_PBISeq_results/PBISeq.demo.R1_filter_rc.fastq
+conda deactivate
+
+# calculate PB transposon insertion site reads ratio
+perl step3.PB.specific_ratio.pl \
+./Ca_PBISeq_results/PBISeq.demo.R1_clean.fastq ./Ca_PBISeq_results/specific_reads_ratio.txt
 ```
-identify chromatin-enriched RNAs and evaluate the gene expressoin levels as well as interaction scopes.
 
-arguments|option|description
----|---|---
-`hdf5`|required|*HDF5* file with mapping information evaluated by *GridTools*.
-`-e/--exprs EXPRS`|optional|output file for the gene expression [default: print to the screen].
-`-s/--scope SCOPE`|optional|output file for the RNA interaction scope [default: None].
-
-## DNA
+## Step 3 align the reads against the genome
+Align the reads against the genome to filter unambiguously mapped reads. Run the following scripts in series or run in parallel. Two output files will be produced:
 ```
-GridTools.py DNA [-h] hdf5
+# align the reads to the reference genome using bwa mem module
+conda activate PBISeq
+bwa mem A892.assembly.fasta \
+./Ca_PBISeq_results/PBISeq.demo.R1_filter_rc.fastq > ./Ca_PBISeq_results/PBISeq.demo.R1.sam
+
+# convert sam file to bam file
+samtools view -bS \
+./Ca_PBISeq_results/PBISeq.demo.R1.sam > ./Ca_PBISeq_results/PBISeq.demo.R1.bam
+
+# sort bam file
+samtools sort ./Ca_PBISeq_results/PBISeq.demo.R1.bam \
+-o ./Ca_PBISeq_results/PBISeq.demo.R1.sorted.bam
+
+# filter unambiguously mapped reads by the bamToBed function of SAMtools to transform the bam file to the BED format
+samtools index PBISeq.demo.R1.sorted.bam
+bamToBed -i PBISeq.demo.R1.sorted.bam > PBISeq.demo.R1.sorted.bed
+conda deactivate
 ```
-identify RNA-enriched chromatin regions in background (trans) and foreground (cis).
 
-arguments|option|description
----|---|---
-`hdf5`|required|*HDF5* file with mapping information evaluated by *GridTools*.
-
-
-## stats
+## Step 4 count the read number per insertion site
+< PBISeq.demo_readsPsite >:  contains the processed mapping output with the format: “chromosome or contig name”, “insertion position”, “the total number of reads mapped to that position”, “strand orientation”.
 ```
-GridTools.py stats [-h] -p PREFIX [-b] [-c] [-l] [-r] hdf5
+# count the read number per insertion site 
+Perl step4.PB.reads.site.pl \
+./Ca_PBISeq_results/PBISeq.demo.R1.sorted.bed ./Ca_PBISeq_results/PBISeq.demo_readsPsite
 ```
-statistics of GRID-seq data.
 
-arguments|option|description
----|---|---
-`hdf5`|required|*HDF5* file with mapping information evaluated by *GridTools*.
-`-p/--prefix PREFIX`|required|prefix of output file names.
-`-b/--bases`|optional|if output the summary of base-position information for RNA, Linker and DNA [default: No].
-`-c/--counts`|optional|if output the summary of mapping information in read counts [default: No].
-`-l/--lengths`|optional|if output the distribution of sequence length for RNA, Linker and DNA [default: No].
-`-r/--resolution`|optional|if output the resolution information of the library [default: No].
-
-
-## matrix
+## Step 5 convert read count per site to read count per gene
+< name_readsPgene >: lists genes mapped by insertions. The format is: “chromosome or contig name”, “gene position”, “the total number of reads mapped to the ORF of that gene”.
 ```
-GridTools.py matrix [-h] [-k RPK] [-x DRPK] hdf5
+# convert read count per site to read count per gene 
+perl step5.PB.reads.genelevel.pl \
+./Ca_PBISeq_results/PBISeq.demo.readsPsite ./Ca_PBISeq_results/PBISeq.demo.readsPgene
 ```
-cacluate the RNA-chromatin interation matrix.
-
-arguments|option|description
----|---|---
-`hdf5`|required|*HDF5* file with mapping information evaluated by *GridTools*.
-`-k/--rpk RPK`|optional|cutoff of RNA reads per kilobase in the gene body. [default: 100]
-`-x/--drpk DRPK`|optional|cutoff of DNA reads per kilobase at the maximum bin [default: 10].
-
-
-## model
-```
-GridTools.py model [-h] [-k RPK] [-x DRPK] -e ELEBED [-z ZSCORE] hdf5
-```
-model the network of enhancer-promoter proximity.
-
-arguments|option|description
----|---|---
-`hdf5`|required|*HDF5* file with mapping information evaluated by *GridTools*.
-`-e/--elebed ELEBED`|required|*BED* file of regulatory elements (eg. enhancers and promoters).
-`-k/--rpk RPK`|optional|cutoff of RNA reads per kilobase in the gene body. [default: 100]
-`-x/--drpk DRPK`|optional|cutoff of DNA reads per kilobase at the maximum bin [default: 10].
-`-z/--zscore ZSCORE`|optional|z-score to filter the significant proximity [default:-10].
-
-
-# Simple Code Example
-The test data and demo code for the GRID-seq analysis with test dataset at: `http://fugenome.ucsd.edu/gridseq/datasets/gridseq.test10M.raw.fq.gz`:
-
-Demo code is in the gridtools/pipeline/Snakefile.py
-
 
 # License
-The *GridTools* is licensed under **MIT**. The detailed license terms are in the **LICENSE** file.
+The *PBIseq* is licensed under **MIT**. The detailed license terms are in the **LICENSE** file.
+
